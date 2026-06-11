@@ -10,10 +10,15 @@ Each season holds four full day/night cycles — the sun rises and sets (shadows
 sweep with it), and a big full moon climbs the sky opposite it, throwing cool
 moon-shadows while the stone lanterns wake. At low sun and under the moon,
 god-ray shafts filter through the canopies. Weather rolls through in random
-episodes: rain brings a flat overcast sky, soaks the ground dark with a glossy
-specular sheen, and leaves sky-reflecting puddles that slowly dry; snow squalls
-roll through winter; and on some clear summer nights, fireflies. Far overhead,
-bird flocks migrate south through autumn and back north in spring.
+episodes: rain rolls a dense dark storm deck across the sky with lightning
+flashes, soaks the ground dark with a glossy specular sheen, and leaves
+sky-reflecting puddles that slowly dry; snow squalls roll through winter; and
+on some clear summer nights, fireflies, with puddles drying and receding soon
+after each shower. Moths flutter at the lit lanterns on mild nights (they sit
+out the winter and shelter from rain). Far overhead, bird flocks migrate south
+through autumn and back north in spring. The petal storm is the loop's reward — twelve hundred
+petals riding the wind across the whole grove for one full guaranteed-clear
+day, until the entire garden floor turns sacred pink.
 
 Cherry buds open green in the spring daylight (growth pauses overnight), blush
 pink as they swell, and shed in a petal storm lasting exactly one day — every
@@ -66,6 +71,7 @@ For a chromeless window, try `msedge --app=http://localhost:8423/`.
 | double-click | toggle fullscreen |
 | `1` `2` `3` `4` | fast-forward to summer / autumn / winter / spring |
 | `+` / `−` | time speed, ±10 per press (−100 = real time, 1 day = 24 h; +100 = 1 day = 1 s; default +40 ≈ 30 s days) |
+| `R` | render resolution: HD / FHD / Native — fixed internal buffer stretched full-window with hard pixels (default FHD) |
 | `Space` | pause / resume |
 
 The cursor hides itself after a few seconds of stillness.
