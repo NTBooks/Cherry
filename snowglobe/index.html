@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>雪月花 — Sakura Snow Globe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B8%3C/text%3E%3C/svg%3E">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0c0e14; }
+  #c { position: fixed; inset: 0; display: block; }
+  .vignette {
+    position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(8, 8, 18, 0.45) 100%);
+  }
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px;
+  }
+  #season {
+    position: fixed; left: 36px; bottom: 32px; color: #fff; opacity: 0;
+    font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'MS Mincho', serif;
+    text-shadow: 0 2px 22px rgba(0, 0, 0, 0.5); pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+  #season .k { font-size: 64px; display: block; line-height: 1.05; }
+  #season .r { font-size: 14px; letter-spacing: 0.45em; text-transform: uppercase; opacity: 0.8; }
+  #speed {
+    position: fixed; top: 26px; right: 30px; color: rgba(255, 255, 255, 0.88);
+    font: 600 15px system-ui, sans-serif; letter-spacing: 0.08em; opacity: 0;
+    transition: opacity 0.6s ease; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+  }
+  #hint {
+    position: fixed; right: 28px; bottom: 26px; color: rgba(255, 255, 255, 0.55);
+    font: 13px system-ui, sans-serif; transition: opacity 2s ease; pointer-events: none;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  }
+  #err {
+    position: fixed; top: 0; left: 0; right: 0; color: #ff9090;
+    background: rgba(24, 0, 0, 0.88); font: 12px/1.5 monospace; padding: 8px 14px;
+    display: none; white-space: pre-wrap; z-index: 9;
+  }
+  #fade {
+    position: fixed; inset: 0; background: #0c0e14; opacity: 1;
+    transition: opacity 2.4s ease; pointer-events: none;
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js",
+    "three/addons/utils/BufferGeometryUtils.js": "./vendor/BufferGeometryUtils.js"
+  }
+}
+</script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+  <div id="season"><span class="k">夏</span><span class="r">Summer</span></div>
+  <div id="speed">time +40</div>
+  <div id="hint">drag to look around &nbsp;·&nbsp; double-click for fullscreen &nbsp;·&nbsp; 1–4 to change season &nbsp;·&nbsp; + / − time speed &nbsp;·&nbsp; tap for a gust</div>
+  <div id="err"></div>
+  <div id="fade"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
