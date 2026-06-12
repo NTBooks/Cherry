@@ -2318,7 +2318,7 @@ const lookTarget = new THREE.Vector3(0, GH0 + CONFIG.lookAtHeight, 0);
 
 window.__setSeason = (t) => { seasonClock = t * CONFIG.seasonSeconds; seasonSkipTarget = -1; };
 window.__force = {};   // { day: 0..1, precip: 0..1, ff: 0..1 } — testing overrides
-window.__dbg = { trees, petals, leaves, flock, prints, printsMat, get simT() { return simT; }, get seasonT() { return (seasonClock / CONFIG.seasonSeconds) % 4; } };
+window.__dbg = { trees, petals, leaves, flock, prints, printsMat, rain, snow, get simT() { return simT; }, get seasonT() { return (seasonClock / CONFIG.seasonSeconds) % 4; } };
 
 function animate() {
   const now = performance.now();
@@ -2382,8 +2382,10 @@ function animate() {
   precipW *= sm01((sessionT - 22) / 10);                        // open on clear skies
   if (clockMode) precipW = 0;                                   // fair skies for the clock
   if (window.__force.precip != null) precipW = window.__force.precip;
-  const rainW = precipW * (1 - wWinter);
-  const snowW = precipW * wWinter;
+  // rain OR snow, never both: rain dies before the winter cusp, snow starts
+  // after it, with a brief overcast lull in between
+  const rainW = precipW * (1 - sm01((wWinter - 0.3) / 0.15));
+  const snowW = precipW * sm01((wWinter - 0.55) / 0.15);
 
   // lightning — brief double-pulse flashes inside rainy spells
   let flashW = 0;
