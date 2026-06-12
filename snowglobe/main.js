@@ -1790,17 +1790,21 @@ function makeCanopySpawner(coverageKey) {
 }
 const spawnPetalCanopy = makeCanopySpawner('covB');
 const spawnLeaf = makeCanopySpawner('covL');
+const spawnPetalAir = (i, sys) => {            // wind-borne, biased toward the blade
+  const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * (rng() < 0.5 ? 4.5 : 8.5);
+  spawnVec.set(Math.cos(a) * r, rand(1.8, 5), Math.sin(a) * r);
+  const it = sys.items[i];
+  it.active = true;
+  it.landT = 0;
+  it.pos.copy(spawnVec);
+  return true;
+};
 const spawnPetal = (i, sys) => {
-  if (petalStormW > 0.08 && rng() < 0.55) {    // wind-borne, biased toward the blade
-    const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * (rng() < 0.5 ? 4.5 : 8.5);
-    spawnVec.set(Math.cos(a) * r, rand(1.8, 5), Math.sin(a) * r);
-    const it = sys.items[i];
-    it.active = true;
-    it.landT = 0;
-    it.pos.copy(spawnVec);
-    return true;
-  }
-  return spawnPetalCanopy(i, sys);
+  if (petalStormW > 0.08 && rng() < 0.55) return spawnPetalAir(i, sys);
+  if (spawnPetalCanopy(i, sys)) return true;
+  // bare trees (e.g. clock mode in real winter): the wind carries them all
+  if (petalStormW > 0.08) return spawnPetalAir(i, sys);
+  return false;
 };
 
 // snow — point cloud filling the dome
@@ -2285,6 +2289,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'c' || e.key === 'C') {
     clockMode = !clockMode;
+    if (clockMode) zoomOffset = 0;   // enter on the clean framing; wheel adjusts from there
     showNote(clockMode ? 'clock — real time, fair skies' : 'clock off');
   }
   if (e.key === '+' || e.key === '=') adjustSpeed(10);
@@ -2553,6 +2558,8 @@ function animate() {
   gustVec.multiplyScalar(Math.exp(-sdt * 3));
   wind.multiplyScalar(Math.exp(-sdt * 0.85));
   petalStormW = petalStorm(seasonT);
+  // clock mode keeps the blossom vortex turning around the clock, year-round
+  petalStormW = Math.max(petalStormW, 0.88 * sm01(clockBlend));
   petals.update(sdt, simT, petalStormW + 0.18 * blossomCoverage(seasonT), spawnPetal);
   leaves.update(sdt, simT, leafFall(seasonT) + 0.14 * leafCoverage(seasonT) * leafTurn(seasonT), spawnLeaf);
 
@@ -2797,19 +2804,27 @@ function animate() {
   const cb = sm01(clockBlend);
   let radius = THREE.MathUtils.clamp(CONFIG.orbitRadius + zoomOffset, 3.2, 18.3)
     + 0.5 * Math.sin(simT * (Math.PI * 2) / 73);
-  radius = THREE.MathUtils.lerp(radius, 4.75, cb);   // clock mode: inside the tree ring
+  // clock mode: inside the tree ring, but the wheel still dollies
+  radius = THREE.MathUtils.lerp(radius, THREE.MathUtils.clamp(4.75 + zoomOffset, 2.6, 13), cb);
   const height = Math.max(0.55, CONFIG.orbitHeight + 0.4 * Math.sin(simT * (Math.PI * 2) / 47)
     + pitchOffset * 2.2 + Math.max(0, zoomOffset) * 0.22);   // rise a little as you pull back
   camera.position.set(Math.cos(camAzimuth) * radius, height, Math.sin(camAzimuth) * radius);
   lookTarget.y = GH0 + THREE.MathUtils.lerp(CONFIG.lookAtHeight, 1.85, cb);
   camera.lookAt(lookTarget);   // pointed at the sword — or at the clock that replaces it
 
-  // clock mode puts the camera inside the tree ring — trees near (or behind)
-  // the camera ease themselves out of the way so the face is never blocked
+  // clock mode: any tree within a corridor around the camera→clock sight line
+  // eases itself out of the way, so the face stays clear at any zoom distance
   for (const tree of trees) {
-    const tdx = tree.grp.position.x - camera.position.x;
-    const tdz = tree.grp.position.z - camera.position.z;
-    const want = (cb > 0.4 && Math.hypot(tdx, tdz) < 4.2) ? 0.001 : 1;
+    let want = 1;
+    if (cb > 0.4) {
+      const cx = camera.position.x, cz = camera.position.z;
+      const segT = THREE.MathUtils.clamp(
+        ((tree.grp.position.x - cx) * -cx + (tree.grp.position.z - cz) * -cz) / (cx * cx + cz * cz),
+        0, 1,
+      );
+      const px = cx * (1 - segT), pz = cz * (1 - segT);   // nearest point on the sight line
+      if (Math.hypot(tree.grp.position.x - px, tree.grp.position.z - pz) < 2.4) want = 0.001;
+    }
     tree.hideBlend = THREE.MathUtils.lerp(tree.hideBlend ?? 1, want, Math.min(1, dt * 3.5));
     tree.grp.scale.setScalar(tree.hideBlend);
   }
