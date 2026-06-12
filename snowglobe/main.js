@@ -94,11 +94,13 @@ const camera = new THREE.PerspectiveCamera(47, window.innerWidth / window.innerH
 // Render resolution — fixed internal buffer, stretched to the window with hard
 // pixels (R cycles HD / FHD / Native). Width follows the window's aspect.
 const RES_MODES = [
-  { name: 'HD', h: 720 },
-  { name: 'FHD', h: 1080 },
+  { name: '360p', h: 360 },
+  { name: '540p', h: 540 },
+  { name: '720p', h: 720 },
+  { name: '1080p', h: 1080 },
   { name: 'Native', h: 0 },
 ];
-let resMode = 1;   // default FHD — fast and chunky
+let resMode = 3;   // default 1080p — fast and chunky; R cycles, manual only
 let lastWinW = 0, lastWinH = 0;
 function applyResolution() {
   lastWinW = window.innerWidth;
@@ -407,7 +409,11 @@ function blossomState(t) {
   return [up * (1 - down), up];
 }
 const blossomCoverage = (t) => blossomState(t)[0];
-const leafCoverage    = (t) => growthRamp(t, 0.15, 0.6) * (1 - ramp01(t, 1.55, 2.15));
+// leaves flush WHILE the blossoms shed (3.95→4.45) — no bare gap between them
+const leafCoverage = (t) => {
+  const u = t < 3.0 ? t + 4 : t;
+  return growthRamp(u, 3.95, 4.45) * (1 - ramp01(t, 1.55, 2.15));
+};
 const leafTurn        = (t) => ramp01(t, 1.05, 1.5);                       // green→autumn
 const petalStorm      = (t) => windowRamp(t, 3.9, 3.975, 4.075, 4.15);     // the one-day storm
 const leafFall        = (t) => windowRamp(t, 1.5, 1.75, 1.95, 2.3);
@@ -1845,14 +1851,19 @@ const rain = {
       }
       dirty = true;
       it.pos.y -= it.v * dt;
-      it.pos.x += (wind.x + breezeX) * 1.5 * dt;
-      it.pos.z += (wind.z + breezeZ) * 1.5 * dt;
+      it.pos.x += (wind.x + breezeX) * 2.4 * dt;
+      it.pos.z += (wind.z + breezeZ) * 2.4 * dt;
       if (it.pos.y < groundHeight(it.pos.x, it.pos.z) + 0.15) {
         if (active > target) it.active = false;
         else it.pos.y = rand(7, 11);
       }
       dummy.position.copy(it.pos);
-      dummy.rotation.set(0, 0, 0);
+      // streaks slant with the wind they're falling through
+      dummy.rotation.set(
+        Math.atan2((wind.z + breezeZ) * 2.4, 10),
+        0,
+        -Math.atan2((wind.x + breezeX) * 2.4, 10),
+      );
       dummy.scale.set(1, it.active ? it.len : 1e-4, 1);
       dummy.updateMatrix();
       this.mesh.setMatrixAt(i, dummy.matrix);
@@ -2057,6 +2068,99 @@ wetGround.visible = false;
 scene.add(wetGround);
 
 // ----------------------------------------------------------------------------
+// The Mogu clock — C swaps the katana for a great construct-clock standing in
+// its place: the katana itself becomes the minute hand, a tanto marks the
+// hours, a red crystal sweeps the seconds, and a rupee-cut ruby spins above —
+// one full turn per second. Dark stone, gold fangs, jade inlay.
+// ----------------------------------------------------------------------------
+const clockGroup = new THREE.Group();
+{
+  const ivory = toonMat('#f1e8d4');
+  const gold = new THREE.MeshPhongMaterial({ color: 0xc9a35a, specular: 0xffe2a0, shininess: 50 });
+
+  const face = new THREE.Mesh(new THREE.CircleGeometry(1.0, 48), ivory);
+  clockGroup.add(face);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.085, 12, 56), gold);
+  clockGroup.add(rim);
+  addOutline(rim, 0.02);
+  const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.022, 8, 48), gold);
+  innerRing.position.z = 0.012;
+  clockGroup.add(innerRing);
+
+  // chunky gold ticks; the cardinals are diamond-set Mogu fangs
+  const tickGeos = [];
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const big = i % 3 === 0;
+    const g = new THREE.BoxGeometry(big ? 0.16 : 0.06, big ? 0.16 : 0.15, 0.05);
+    dummy.position.set(Math.sin(a) * (big ? 1.0 : 0.88), Math.cos(a) * (big ? 1.0 : 0.88), 0.03);
+    dummy.rotation.set(0, 0, -a + (big ? Math.PI / 4 : 0));
+    dummy.scale.setScalar(1);
+    dummy.updateMatrix();
+    g.applyMatrix4(dummy.matrix);
+    tickGeos.push(g);
+  }
+  const ticks = new THREE.Mesh(mergeGeometries(tickGeos), gold);
+  clockGroup.add(ticks);
+  addOutline(ticks, 0.012);
+
+  // hands pivot at the centre boss
+  const mkPivot = (z) => {
+    const p = new THREE.Group();
+    p.position.z = z;
+    clockGroup.add(p);
+    return p;
+  };
+  const hourPivot = mkPivot(0.05);
+  const minutePivot = mkPivot(0.08);
+  const secPivot = mkPivot(0.12);
+
+  // minute hand: the katana itself, pommel at the pivot, blade tip at the rim
+  const kat = sword.clone();
+  kat.position.set(0, 1.73 * 0.52, 0);
+  kat.rotation.set(0, 0, Math.PI);
+  kat.scale.setScalar(0.52);
+  minutePivot.add(kat);
+  // hour hand: a tanto — shorter, stockier sibling
+  const tanto = sword.clone();
+  tanto.position.set(0, 1.73 * 0.3, 0);
+  tanto.rotation.set(0, 0, Math.PI);
+  tanto.scale.set(0.36, 0.3, 0.36);
+  hourPivot.add(tanto);
+  // second hand: a sliver of red crystal
+  const crys = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.5, 0).scale(0.05, 0.95, 0.05).translate(0, 0.42, 0),
+    new THREE.MeshPhongMaterial({ color: 0xd2304a, emissive: 0x5a0c18, specular: 0xffaabb, shininess: 90 }),
+  );
+  secPivot.add(crys);
+  const boss = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 8).rotateX(Math.PI / 2), gold);
+  boss.position.z = 0.14;
+  clockGroup.add(boss);
+
+  // the ruby — rupee-cut (hex prism with pyramidal ends), deep translucent red:
+  // flat-shaded facets, and the back faces show through for the internal-cut look
+  const ruby = new THREE.Mesh(
+    mergeGeometries([
+      new THREE.CylinderGeometry(0.16, 0.16, 0.2, 6),
+      new THREE.ConeGeometry(0.16, 0.22, 6).translate(0, 0.21, 0),
+      new THREE.ConeGeometry(0.16, 0.22, 6).rotateX(Math.PI).translate(0, -0.21, 0),
+    ]),
+    new THREE.MeshPhongMaterial({
+      color: 0x6e0512, emissive: 0x52060f, specular: 0x551418, shininess: 60,
+      transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false,
+      flatShading: true,
+    }),
+  );
+  ruby.position.y = 1.55;
+  clockGroup.add(ruby);
+
+  clockGroup.userData = { hourPivot, minutePivot, secPivot, ruby };
+  clockGroup.position.set(0, GH0 + 1.75, 0);
+  clockGroup.visible = false;
+  scene.add(clockGroup);
+}
+
+// ----------------------------------------------------------------------------
 // Migrating birds — a far V of flapping silhouettes; south in autumn, back
 // north in spring, the odd summer wanderer, almost none in winter
 // ----------------------------------------------------------------------------
@@ -2074,7 +2178,8 @@ const birds = [];
     const wR = new THREE.Mesh(wingGeoR, birdMat);
     b.add(wL, wR);
     const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1;
-    b.position.set(i === 0 ? 0 : side * row * 0.9, rand(-0.2, 0.2), (i === 0 ? 0 : row) * 1.1);
+    // the leader flies at the V's apex; the arms trail BEHIND it
+    b.position.set(i === 0 ? 0 : side * row * 0.9, rand(-0.2, 0.2), -(i === 0 ? 0 : row) * 1.1);
     flock.add(b);
     birds.push({ wL, wR, ph: rng() * 7 });
   }
@@ -2121,43 +2226,51 @@ function adjustSpeed(d) {
   showNote(`time ${timeSpeed > 0 ? '+' : ''}${timeSpeed}`);
 }
 
-let dragOffset = 0, dragVel = 0, pitchOffset = 0;
-let parallaxX = 0, parallaxTargetX = 0;
+let pitchOffset = 0;
+let holdT = -10;            // post-drag hold before the orbit resumes
+let zoomOffset = 0;         // mouse-wheel dolly, persistent
 let dragging = false, lastPX = 0, lastPY = 0, downX = 0, downY = 0;
 let paused = false;
+let clockMode = false;
+let clockBlend = 0;          // eases the clock in/out and pulls the camera close
 let seasonSkipTarget = -1;
 let lastSeasonIdx = -1;
 let lastOpacityStr = '';
 let idleTimer = 0;
 let cursorHidden = false;
+const gustVec = new THREE.Vector3();   // tap gusts ramp in instead of slamming
 
 canvas.addEventListener('pointerdown', (e) => {
   dragging = true;
   lastPX = downX = e.clientX;
   lastPY = downY = e.clientY;
-  dragVel = 0;
   try { canvas.setPointerCapture(e.pointerId); } catch {}
 });
+let lastMoveT = 0;
 window.addEventListener('pointermove', (e) => {
-  parallaxTargetX = (e.clientX / window.innerWidth - 0.5) * 0.05;
   idleTimer = 0;
   if (cursorHidden) { document.body.style.cursor = ''; cursorHidden = false; }
   if (!dragging) return;
   const dx = e.clientX - lastPX, dy = e.clientY - lastPY;
   lastPX = e.clientX; lastPY = e.clientY;
-  dragOffset -= dx * 0.0035;
-  dragVel = -dx * 0.0035 * 60;
-  pitchOffset = THREE.MathUtils.clamp(pitchOffset + dy * 0.002, -0.45, 0.7);
+  camAzimuth -= dx * 0.0035;
+  lastMoveT = performance.now();
+  pitchOffset = THREE.MathUtils.clamp(pitchOffset + dy * 0.003, -1.0, 2.2);
 });
 window.addEventListener('pointerup', (e) => {
   if (dragging && Math.abs(e.clientX - downX) < 4 && Math.abs(e.clientY - downY) < 4) {
-    // a tap (not a drag) stirs the air — a gust through the globe
+    // a tap (not a drag) stirs the air — a gust that builds, gently
     const dir = (e.clientX / window.innerWidth) < 0.5 ? 1 : -1;
-    wind.x += Math.cos(camAzimuth + Math.PI / 2) * dir * 1.6;
-    wind.z += Math.sin(camAzimuth + Math.PI / 2) * dir * 1.6;
+    gustVec.x += Math.cos(camAzimuth + Math.PI / 2) * dir * 1.6;
+    gustVec.z += Math.sin(camAzimuth + Math.PI / 2) * dir * 1.6;
+  } else if (dragging) {
+    holdT = 3;        // linger exactly where the user left the camera, then resume
   }
   dragging = false;
 });
+window.addEventListener('wheel', (e) => {
+  zoomOffset = THREE.MathUtils.clamp(zoomOffset + e.deltaY * 0.0066, -5.4, 9.5);
+}, { passive: true });
 window.addEventListener('pointercancel', () => { dragging = false; });
 window.addEventListener('dblclick', () => {
   if (document.fullscreenElement) document.exitFullscreen();
@@ -2165,7 +2278,15 @@ window.addEventListener('dblclick', () => {
 });
 window.addEventListener('keydown', (e) => {
   if (e.key >= '1' && e.key <= '4') seasonSkipTarget = (Number(e.key) - 1 + 0.5);
-  if (e.key === ' ') { paused = !paused; e.preventDefault(); }
+  if (e.key === ' ') {
+    paused = !paused;
+    showNote(paused ? 'paused' : 'resumed');
+    e.preventDefault();
+  }
+  if (e.key === 'c' || e.key === 'C') {
+    clockMode = !clockMode;
+    showNote(clockMode ? 'clock — real time, fair skies' : 'clock off');
+  }
   if (e.key === '+' || e.key === '=') adjustSpeed(10);
   if (e.key === '-' || e.key === '_') adjustSpeed(-10);
   if (e.key === 'r' || e.key === 'R') {
@@ -2182,8 +2303,9 @@ setTimeout(() => { hintEl.style.opacity = '0'; }, 9000);
 // ----------------------------------------------------------------------------
 let lastNow = performance.now();
 let simT = rand(0, 10);
-let seasonClock = 0.15 * CONFIG.seasonSeconds;
-let camAzimuth = 0;
+let sessionT = 0;                                  // real seconds since load
+let seasonClock = 0.77 * CONFIG.seasonSeconds;     // mid-summer, sun freshly risen
+let camAzimuth = (rand(0, 10) / CONFIG.orbitSeconds) * Math.PI * 2;
 
 const tmpColor = new THREE.Color();
 const tmpColor2 = new THREE.Color();
@@ -2207,10 +2329,12 @@ function animate() {
   // self-heal if a resize event was missed while the tab was hidden
   if (window.innerWidth !== lastWinW || window.innerHeight !== lastWinH) applyResolution();
   simT += sdt;
+  sessionT += dt;
   seasonClock += sdt * (DAY_SECONDS / dayLengthSeconds(timeSpeed));
 
+
   idleTimer += dt;
-  if (idleTimer > 3 && !cursorHidden) { document.body.style.cursor = 'none'; cursorHidden = true; }
+  if (idleTimer > 3 && !cursorHidden && !dragging) { document.body.style.cursor = 'none'; cursorHidden = true; }
 
   let seasonT = (seasonClock / CONFIG.seasonSeconds) % 4;
   if (seasonSkipTarget >= 0) {
@@ -2218,6 +2342,12 @@ function animate() {
     if (diff < 0.05) seasonSkipTarget = -1;
     else seasonClock += Math.min(diff, dt * 14) * CONFIG.seasonSeconds;
     seasonT = (seasonClock / CONFIG.seasonSeconds) % 4;
+  }
+  // clock mode: the scene's date locks to the real calendar
+  const clockNow = clockMode ? new Date() : null;
+  if (clockNow) {
+    const doy = (clockNow - new Date(clockNow.getFullYear(), 0, 0)) / 86400000;
+    seasonT = (((doy - 152 + 365) % 365) / 365) * 4;   // summer starts June 1
   }
   computeWeights(seasonT);
   const [wSummer, wFall, wWinter, wSpring] = weights;
@@ -2229,6 +2359,10 @@ function animate() {
 
   // --- day/night: four sun cycles per season, a full moon opposite the sun --
   let dayPhase = (seasonClock / DAY_SECONDS) % 1;     // 0 sunrise · .25 noon · .5 sunset · .75 midnight
+  if (clockNow) {
+    const hours = clockNow.getHours() + clockNow.getMinutes() / 60 + clockNow.getSeconds() / 3600;
+    dayPhase = ((hours - 6) / 24 + 1) % 1;            // 6:00 sunrise, 18:00 sunset
+  }
   if (window.__force.day != null) dayPhase = window.__force.day;
   const sunTheta = dayPhase * Math.PI * 2;
   const sunEl = Math.sin(sunTheta);
@@ -2245,6 +2379,8 @@ function animate() {
   let precipW = THREE.MathUtils.lerp(hash01(seg - 1) < 0.42 ? 1 : 0, hash01(seg) < 0.42 ? 1 : 0, segBlend);
   precipW *= 1 - windowRamp(seasonT, 1.2, 1.24, 1.51, 1.55);   // the incense day stays clear
   precipW *= 1 - windowRamp(seasonT, 3.82, 3.88, 4.17, 4.25);  // and so does the petal storm
+  precipW *= sm01((sessionT - 22) / 10);                        // open on clear skies
+  if (clockMode) precipW = 0;                                   // fair skies for the clock
   if (window.__force.precip != null) precipW = window.__force.precip;
   const rainW = precipW * (1 - wWinter);
   const snowW = precipW * wWinter;
@@ -2411,6 +2547,8 @@ function animate() {
   }
 
   // --- particles --------------------------------------------------------------
+  wind.addScaledVector(gustVec, Math.min(1, sdt * 3));   // gusts build over ~half a second
+  gustVec.multiplyScalar(Math.exp(-sdt * 3));
   wind.multiplyScalar(Math.exp(-sdt * 0.85));
   petalStormW = petalStorm(seasonT);
   petals.update(sdt, simT, petalStormW + 0.18 * blossomCoverage(seasonT), spawnPetal);
@@ -2481,6 +2619,26 @@ function animate() {
 
   // mirror reflections follow the daylight (the env map is a daytime sky)
   for (const [m, base] of shineMats) m.reflectivity = base * (0.15 + 0.85 * dayW);
+
+  // the Mogu clock takes the katana's place while C is active
+  clockBlend += ((clockMode ? 1 : 0) - clockBlend) * Math.min(1, dt * 2.2);
+  sword.visible = clockBlend < 0.6;
+  clockGroup.visible = clockBlend > 0.02;
+  if (clockGroup.visible) {
+    clockGroup.quaternion.copy(camera.quaternion);
+    clockGroup.scale.setScalar(0.25 + 0.75 * sm01(clockBlend));
+    if (clockNow) {
+      const u = clockGroup.userData;
+      const ms = clockNow.getMilliseconds() / 1000;
+      const sec = clockNow.getSeconds() + ms;
+      const min = clockNow.getMinutes() + sec / 60;
+      const hr = (clockNow.getHours() % 12) + min / 60;
+      u.minutePivot.rotation.z = -(min / 60) * Math.PI * 2;
+      u.hourPivot.rotation.z = -(hr / 12) * Math.PI * 2;
+      u.secPivot.rotation.z = -(sec / 60) * Math.PI * 2;
+      u.ruby.rotation.y = (sec / 60) * Math.PI * 2;   // one stately turn per minute
+    }
+  }
 
   // puddles fill while it rains, dry out slowly, and mirror the current sky
   puddleW += (rainW - puddleW) * Math.min(1, sdt / (rainW > puddleW ? 7 : 12));
@@ -2625,20 +2783,34 @@ function animate() {
   }
 
   // --- camera -----------------------------------------------------------------
+  // The orbit is incremental: a drag leaves the camera where it was put, holds
+  // a few seconds, then the orbit eases back in FROM that spot — no snap-back.
   if (!dragging) {
-    dragOffset += dragVel * dt;
-    dragVel *= Math.exp(-dt * 1.2);
-    dragOffset *= Math.exp(-dt * 0.18);
-    pitchOffset *= Math.exp(-dt * 0.35);
+    holdT -= dt;
+    const resume = sm01(-holdT / 1.5);
+    if (!paused) camAzimuth += (Math.PI * 2 / CONFIG.orbitSeconds) * dt * resume;
+    if (holdT < -4) pitchOffset *= Math.exp(-dt * 0.05);   // elevation relaxes very slowly
   }
-  parallaxX += (parallaxTargetX - parallaxX) * Math.min(1, dt * 2.5);
-
-  camAzimuth = (simT / CONFIG.orbitSeconds) * Math.PI * 2 + dragOffset + parallaxX;
   if (window.__force.az != null) camAzimuth = window.__force.az;
-  const radius = CONFIG.orbitRadius + 0.5 * Math.sin(simT * (Math.PI * 2) / 73);
-  const height = CONFIG.orbitHeight + 0.4 * Math.sin(simT * (Math.PI * 2) / 47) + pitchOffset * 2.2;
+  const cb = sm01(clockBlend);
+  let radius = THREE.MathUtils.clamp(CONFIG.orbitRadius + zoomOffset, 3.2, 18.3)
+    + 0.5 * Math.sin(simT * (Math.PI * 2) / 73);
+  radius = THREE.MathUtils.lerp(radius, 4.75, cb);   // clock mode: inside the tree ring
+  const height = Math.max(0.55, CONFIG.orbitHeight + 0.4 * Math.sin(simT * (Math.PI * 2) / 47)
+    + pitchOffset * 2.2 + Math.max(0, zoomOffset) * 0.22);   // rise a little as you pull back
   camera.position.set(Math.cos(camAzimuth) * radius, height, Math.sin(camAzimuth) * radius);
-  camera.lookAt(lookTarget.x, lookTarget.y + pitchOffset * 1.5, lookTarget.z);
+  lookTarget.y = GH0 + THREE.MathUtils.lerp(CONFIG.lookAtHeight, 1.85, cb);
+  camera.lookAt(lookTarget);   // pointed at the sword — or at the clock that replaces it
+
+  // clock mode puts the camera inside the tree ring — trees near (or behind)
+  // the camera ease themselves out of the way so the face is never blocked
+  for (const tree of trees) {
+    const tdx = tree.grp.position.x - camera.position.x;
+    const tdz = tree.grp.position.z - camera.position.z;
+    const want = (cb > 0.4 && Math.hypot(tdx, tdz) < 4.2) ? 0.001 : 1;
+    tree.hideBlend = THREE.MathUtils.lerp(tree.hideBlend ?? 1, want, Math.min(1, dt * 3.5));
+    tree.grp.scale.setScalar(tree.hideBlend);
+  }
 
   // --- season label -------------------------------------------------------------
   let maxW = 0, idx = 0;

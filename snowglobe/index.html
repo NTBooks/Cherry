@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B8%3C/text%3E%3C/svg%3E">
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #0c0e14; }
-  #c { position: fixed; inset: 0; display: block; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0c0e14; user-select: none; }
+  #c { position: fixed; inset: 0; display: block; touch-action: none; }
   .vignette {
     position: fixed; inset: 0; pointer-events: none;
     background: radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(8, 8, 18, 0.45) 100%);
@@ -61,7 +61,7 @@
   <div class="grain"></div>
   <div id="season"><span class="k">夏</span><span class="r">Summer</span></div>
   <div id="speed">time +40</div>
-  <div id="hint">drag to look around &nbsp;·&nbsp; double-click for fullscreen &nbsp;·&nbsp; 1–4 to change season &nbsp;·&nbsp; + / − time speed &nbsp;·&nbsp; R resolution &nbsp;·&nbsp; tap for a gust</div>
+  <div id="hint">drag to look &nbsp;·&nbsp; scroll to dolly &nbsp;·&nbsp; double-click fullscreen &nbsp;·&nbsp; 1–4 seasons &nbsp;·&nbsp; + / − time speed &nbsp;·&nbsp; R resolution &nbsp;·&nbsp; C real-time clock &nbsp;·&nbsp; Space pause &nbsp;·&nbsp; tap for a gust</div>
   <div id="err"></div>
   <div id="fade"></div>
   <script type="module" src="./main.js"></script>

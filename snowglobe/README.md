@@ -66,13 +66,17 @@ For a chromeless window, try `msedge --app=http://localhost:8423/`.
 | Input | Effect |
 | --- | --- |
 | (nothing) | slow orbit, four day/night cycles per season (~96 s each), loops forever |
-| drag | look around; the orbit gently reclaims the camera |
-| tap / click | a gust of wind stirs petals, leaves, and snow |
+| drag | orbit the camera (always pointed at the sword); it lingers where you leave it, then the orbit resumes from there |
+| scroll wheel | dolly closer or further — it stays where you put it |
+| tap / click | a gust of wind builds and stirs petals, leaves, rain, and snow |
 | double-click | toggle fullscreen |
 | `1` `2` `3` `4` | fast-forward to summer / autumn / winter / spring |
 | `+` / `−` | time speed, ±10 per press (−100 = real time, 1 day = 24 h; +100 = 1 day = 1 s; default +40 ≈ 30 s days) |
-| `R` | render resolution: HD / FHD / Native — fixed internal buffer stretched full-window with hard pixels (default FHD) |
-| `Space` | pause / resume |
+| `R` | render resolution: 360p / 540p / 720p / 1080p / Native, stretched full-window with hard pixels (default 1080p) — manual only |
+| `C` | real-time clock mode: a great stone-and-gold construct clock takes the katana's place — the katana is its minute hand, a tanto marks the hours, a red crystal sweeps the seconds, and a rupee-cut ruby spins above it once per second. Date and hour lock to the real ones, skies stay fair, and the camera glides inside the tree ring for a clear view |
+| `Space` | pause everything (weather, particles, light) — the camera still moves, for screenshots |
+
+The page opens on a clear mid-summer morning, whatever the weather schedule says.
 
 The cursor hides itself after a few seconds of stillness.
 
